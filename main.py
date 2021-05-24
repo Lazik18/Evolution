@@ -11,8 +11,8 @@ img_folder = os.path.join(game_folder, 'img')
 
 map_img = pygame.image.load(os.path.join(img_folder, 'map.png'))
 
-SIZE_CELL = 10
-SIZE_OBJ = 8
+SIZE_CELL = 12
+SIZE_OBJ = 10
 SIZE_POPULATION = 5
 
 all_gen = []
@@ -30,7 +30,7 @@ random.shuffle(all_gen)
 # 0 поворот налево на 45 +
 # 1 поворот направо на 45 +
 # 2 посмотреть (1 - пусто; 2 - еда; 3 - моб; 4 - стена; 5 - яд)+
-# 3 преобразовать яд в еду
+# 3 преобразовать яд в еду +
 # 4 съесть
 # 5 перейти вперед
 # 6-63 переход на такое кол-во клеток по таблице
@@ -124,6 +124,7 @@ class Poison:
 screen = pygame.display.set_mode((700, 625))
 all_obj = []
 
+
 for i in range(0, map_img.get_width()):
     s = []
     for j in range(0, map_img.get_height()):
@@ -162,9 +163,11 @@ while True:
     for i in range(0, map_img.get_width()):
         for j in range(0, map_img.get_height()):
             if all_obj[i][j]:
-                if type(all_obj[i][j]) == Mob:
-                    if type(all_obj[i][j].sees) == Food:
-                        all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]] = all_obj[i][j].sees
+                if type(all_obj[i][j]) is Mob:
+                    # if type(all_obj[i][j].sees) is Food:
+                    #     print(all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]])
+                        # all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]] = all_obj[i][j].sees
+
                     all_obj[i][j].sees = all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]]
 
                 all_obj[i][j].update()
