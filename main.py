@@ -27,6 +27,13 @@ all_gen *= SIZE_POPULATION
 random.shuffle(all_gen)
 
 
+MOB_TURN_LEFT = 0
+MOB_TURN_RIGHT = 1
+MOB_LOOK = 2
+MOB_TRANSFORM = 3
+MOB_EAT = 4
+MOB_GO_FORWARD = 5
+
 # 0 поворот налево на 45 +
 # 1 поворот направо на 45 +
 # 2 посмотреть (1 - пусто; 2 - еда; 3 - моб; 4 - стена; 5 - яд)+
@@ -46,6 +53,9 @@ class Mob:
         self.direction(0)
         self.energy = 20
 
+    def __str__(self):
+        return "> id: %s\n> look: %s\tsees: %s\n> energy: %s\n> command: %s\n" % (self.id, self.look, self.sees, self.energy, self.gen[self.counter])
+
     def update(self):
         if self.gen[self.counter] == 0:
             self.direction(-1)
@@ -58,24 +68,29 @@ class Mob:
             self.energy -= 1
         pygame.draw.rect(screen, (42, 141, 156), self.rect, 0)
 
+    def get_look(self):
+        x, y = self.rect.x//SIZE_CELL, self.rect.y//SIZE_CELL
+
+        if self.orientation == 0:
+            return [x, y + 1]
+        elif self.orientation == 1:
+            return [x + 1, y + 1]
+        elif self.orientation == 2:
+            return [x + 1, y]
+        elif self.orientation == 3:
+            return [x + 1, y - 1]
+        elif self.orientation == 4:
+            return [x, y - 1]
+        elif self.orientation == 5:
+            return [x - 1, y - 1]
+        elif self.orientation == 6:
+            return [x - 1, y]
+        elif self.orientation == 7:
+            return [x - 1, y + 1]
+
     def direction(self, arg: int):
         self.orientation = (self.orientation + arg) % 8
-        if self.orientation == 0:
-            self.look = [self.look[0], self.look[1] + 1]
-        elif self.orientation == 1:
-            self.look = [self.look[0] + 1, self.look[1] + 1]
-        elif self.orientation == 2:
-            self.look = [self.look[0] + 1, self.look[1]]
-        elif self.orientation == 3:
-            self.look = [self.look[0] + 1, self.look[1] - 1]
-        elif self.orientation == 4:
-            self.look = [self.look[0], self.look[1] - 1]
-        elif self.orientation == 5:
-            self.look = [self.look[0] - 1, self.look[1] - 1]
-        elif self.orientation == 6:
-            self.look = [self.look[0] - 1, self.look[1]]
-        elif self.orientation == 7:
-            self.look = [self.look[0] - 1, self.look[1] + 1]
+        self.look = self.get_look()
 
     def looking(self):
         if type(self.sees) is None:
@@ -150,7 +165,13 @@ while True:
             sys.exit()
 
         if event.type == pygame.MOUSEBUTTONDOWN:
-            print('click (x: %s y: %s)' % (event.pos[0]//SIZE_CELL, event.pos[1]//SIZE_CELL))
+            obj = all_obj[event.pos[0] // SIZE_CELL][event.pos[1] // SIZE_CELL]
+            if event.button == 1:
+                print('click (x: %s y: %s)' % (event.pos[0]//SIZE_CELL, event.pos[1]//SIZE_CELL))
+                print(obj)
+            elif event.button == 3:
+                if type(obj) == Mob:
+                    obj.direction(1)
 
         # if event.type == pygame.KEYDOWN:
         #     if event.key == pygame.K_LEFT:
@@ -167,12 +188,22 @@ while True:
         for j in range(0, map_img.get_height()):
             if all_obj[i][j]:
                 if type(all_obj[i][j]) is Mob:
-                    all_obj[i][j].sees = all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]]
 
-                    if type(all_obj[i][j].sees) is Food:
-                        # all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]] # точно food.
-                        # all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]] = all_obj[i][j].sees
-                        pass
+                    all_obj[i][j].sees = all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]]
+                    #Альтернативный метод работы с мобами
+                    mob_sees = all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]]
+                    mob_status = all_obj[i][j].gen[all_obj[i][j].counter]
+
+                    if mob_status == MOB_TRANSFORM:
+                        if type(mob_sees) == Poison:
+                            all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]] = Food(mob_sees.rect.x, mob_sees.rect.y)
+                    
+
+                    #
+                    # if type(all_obj[i][j].sees) is Food:
+                    #     # all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]] # точно food.
+                    #     # all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]] = all_obj[i][j].sees
+                    #     pass
 
                 all_obj[i][j].update()
 
