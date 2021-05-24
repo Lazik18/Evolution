@@ -89,6 +89,10 @@ class Mob:
         elif type(self.sees) == Poison:
             self.counter += 5
 
+    def poison_to_food(self):
+        if type(self.sees) == Poison:
+            self.sees = Food(self.look[0], self.look[1])
+
 
 class Wall:
     def __init__(self, x, y):
@@ -159,7 +163,8 @@ while True:
         for j in range(0, map_img.get_height()):
             if all_obj[i][j]:
                 if type(all_obj[i][j]) == Mob:
-
+                    if type(all_obj[i][j].sees) == Food:
+                        all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]] = all_obj[i][j].sees
                     all_obj[i][j].sees = all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]]
 
                 all_obj[i][j].update()
