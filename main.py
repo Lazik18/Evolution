@@ -13,21 +13,81 @@ map_img = pygame.image.load(os.path.join(img_folder, 'map.png'))
 
 SIZE_CELL = 10
 SIZE_OBJ = 8
+SIZE_POPULATION = 5
+
+all_gen = []
+for i in range(1, 6):
+    file = open('gen/gen' + str(i) + '.txt', 'r')
+    s = []
+    for line in file:
+        s += list(map(int, line.split(' ')))
+    all_gen.append(s)
+    file.close()
+all_gen *= SIZE_POPULATION
+random.shuffle(all_gen)
 
 
-# 0 поворот налево на 45
-# 1 поворот направо на 45
-# 2 посмотреть (2 - еда; 3 - моб; 4 - стена; 5 - яд)
+# 0 поворот налево на 45 +
+# 1 поворот направо на 45 +
+# 2 посмотреть (1 - пусто; 2 - еда; 3 - моб; 4 - стена; 5 - яд)+
 # 3 преобразовать яд в еду
-# 4
+# 4 съесть
+# 5 перейти вперед
+# 6-63 переход на такое кол-во клеток по таблице
 class Mob:
-    def __init__(self, x, y):
+    def __init__(self, x, y, gen):
         self.rect = pygame.Rect(x + 1, y + 1, SIZE_OBJ, SIZE_OBJ)
         self.id = 1
+        self.orientation = random.randint(0, 7)
+        self.gen = gen
         self.counter = 0
+        self.look = [x // SIZE_CELL, y // SIZE_CELL]
+        self.sees = None
+        self.direction(0)
+        self.energy = 20
 
     def update(self):
+        if self.gen[self.counter] == 0:
+            self.direction(-1)
+            self.energy -= 1
+        elif self.gen[self.counter] == 1:
+            self.direction(+1)
+            self.energy -= 1
+        elif self.gen[self.counter] == 2:
+            self.looking()
+            self.energy -= 1
         pygame.draw.rect(screen, (42, 141, 156), self.rect, 0)
+
+    def direction(self, arg: int):
+        self.orientation = (self.orientation + arg) % 8
+        if self.orientation == 0:
+            self.look = [self.look[0], self.look[1] + 1]
+        elif self.orientation == 1:
+            self.look = [self.look[0] + 1, self.look[1] + 1]
+        elif self.orientation == 2:
+            self.look = [self.look[0] + 1, self.look[1]]
+        elif self.orientation == 3:
+            self.look = [self.look[0] + 1, self.look[1] - 1]
+        elif self.orientation == 4:
+            self.look = [self.look[0], self.look[1] - 1]
+        elif self.orientation == 5:
+            self.look = [self.look[0] - 1, self.look[1] - 1]
+        elif self.orientation == 6:
+            self.look = [self.look[0] - 1, self.look[1]]
+        elif self.orientation == 7:
+            self.look = [self.look[0] - 1, self.look[1] + 1]
+
+    def looking(self):
+        if type(self.sees) is None:
+            self.counter += 1
+        elif type(self.sees) == Food:
+            self.counter += 2
+        elif type(self.sees) == Mob:
+            self.counter += 3
+        elif type(self.sees) == Wall:
+            self.counter += 4
+        elif type(self.sees) == Poison:
+            self.counter += 5
 
 
 class Wall:
@@ -63,6 +123,7 @@ all_obj = []
 for i in range(0, map_img.get_width()):
     s = []
     for j in range(0, map_img.get_height()):
+        obj = None
         if map_img.get_at([i, j]) == pygame.color.Color(0, 0, 0):
             obj = Wall(i * SIZE_CELL, j * SIZE_CELL)
         elif map_img.get_at([i, j]) == pygame.color.Color(255, 0, 0):
@@ -72,7 +133,8 @@ for i in range(0, map_img.get_width()):
             else:
                 obj = Food(i * SIZE_CELL, j * SIZE_CELL)
         elif map_img.get_at([i, j]) == pygame.color.Color(0, 0, 255):
-            obj = Mob(i * SIZE_CELL, j * SIZE_CELL)
+            obj = Mob(i * SIZE_CELL, j * SIZE_CELL, all_gen[0])
+            all_gen.pop(0)
         s.append(obj)
     all_obj.append(s)
 
@@ -95,6 +157,11 @@ while True:
     screen.fill(pygame.color.Color(80, 80, 80))
     for i in range(0, map_img.get_width()):
         for j in range(0, map_img.get_height()):
-            all_obj[i][j].update()
+            if all_obj[i][j]:
+                if type(all_obj[i][j]) == Mob:
+
+                    all_obj[i][j].sees = all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]]
+
+                all_obj[i][j].update()
 
     pygame.display.flip()
