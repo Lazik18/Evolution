@@ -20,7 +20,7 @@ for i in range(1, 6):
     file = open('gen/gen' + str(i) + '.txt', 'r')
     s = []
     for line in file:
-        s += list(map(int, line.split(' ')))
+        s += list(map(int, line.replace('\t', ' ').split(' ')))
     all_gen.append(s)
     file.close()
 all_gen *= SIZE_POPULATION
@@ -44,42 +44,45 @@ MOB_GO_FORWARD = 5
 # 6-63 переход на такое кол-во клеток по таблице
 
 class Mob:
-    def __init__(self, x, y, gen):
+    def __init__(self, x, y, gen, id, colour = (42, 141, 156)):
         self.rect = pygame.Rect(x + 1, y + 1, SIZE_OBJ, SIZE_OBJ)
-        self.id = 1
+        self.id = id
         self.orientation = random.randint(0, 7)
         self.gen = gen
         self.counter = 0
-        self.look = [x // SIZE_CELL, y // SIZE_CELL]
+        self.look = self.get_look()
         self.sees = None
         self.direction(0)
         self.energy = 20
+        self.colour = colour
+        self.hungry = 1
 
     def __str__(self):
         return "> id: %s\n> look: %s\tsees: %s\n> energy: %s\n> command: %s\ngen: %s" % (self.id, self.look, self.sees, self.energy, self.gen[self.counter], self.gen)
 
     def next_counter(self):
         temp_count = self.counter
+
         if self.gen[self.counter] < 6:
-            if self.gen[self.counter] != MOB_LOOK
+            if self.gen[self.counter] != MOB_LOOK:
                 temp_count += 1
 
             else:
-                can_see = [None, Food, Mob, Wall, Poison]
-                for o in range(5):
-                    if type(self.sees) == can_see[o]:
+                can_see = [Food, Mob, Wall, Poison]
+                for o in range(1, len(can_see)):
+                    if type(self.sees) is can_see[o]:
                         temp_count += (o+1)
                         break
+                else:
+                    temp_count += 1
 
         else:
             temp_count += self.gen[self.counter]
 
-        if temp_count > len(self.gen):
-            temp_count = self.gen[0]
-        self.counter = temp_count
+        self.counter = temp_count % len(self.gen)
 
     def update(self):
-        pygame.draw.rect(screen, (42, 141, 156), self.rect, 0)
+        pygame.draw.rect(screen, self.colour, self.rect, self.hungry*2)
         self.look = self.get_look()
 
     def get_look(self):
@@ -101,6 +104,10 @@ class Mob:
             return [x - 1, y]
         elif self.orientation == 7:
             return [x - 1, y + 1]
+
+    def has_eaten(self):
+        self.hungry = 0
+        self.energy += 10
 
     def direction(self, arg: int):
         self.orientation = (self.orientation + arg) % 8
@@ -151,12 +158,14 @@ for i in range(0, map_img.get_width()):
             else:
                 obj = Food(i * SIZE_CELL, j * SIZE_CELL)
         elif map_img.get_at([i, j]) == pygame.color.Color(0, 0, 255):
-            obj = Mob(i * SIZE_CELL, j * SIZE_CELL, all_gen[0])
+            obj = Mob(i * SIZE_CELL, j * SIZE_CELL, all_gen[0], i*j+i+j, (sum(all_gen[0])%140, sum(all_gen[0])%210, sum(all_gen[0])%55))
             all_gen.pop(0)
         s.append(obj)
     all_obj.append(s)
 
 clock = pygame.time.Clock()
+current_ticks = 10
+
 while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -171,8 +180,17 @@ while True:
                     print('click (x: %s y: %s)' % (event.pos[0]//SIZE_CELL, event.pos[1]//SIZE_CELL))
                     print(obj)
 
+                elif event.button == 3:
+                    obj.direction(1)
+
             except IndexError:
                 pass
+
+        elif event.type == pygame.MOUSEWHEEL:
+            current_ticks += (event.y * 10)
+            if current_ticks < 1:
+                current_ticks = 1
+
 
         # if event.type == pygame.KEYDOWN:
         #     if event.key == pygame.K_LEFT:
@@ -196,6 +214,7 @@ while True:
 
                     if mob_status == MOB_LOOK:
                         all_obj[i][j].sees = all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]]
+
                     else:
                         all_obj[i][j].sees = None
 
@@ -206,6 +225,7 @@ while True:
                     elif mob_status == MOB_EAT:
                         if type(mob_sees) == Food:
                             all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]] = None
+                            all_obj[i][j].has_eaten()
 
                     elif mob_status == MOB_TURN_LEFT:
                         all_obj[i][j].direction(-1)
@@ -215,20 +235,24 @@ while True:
 
                     elif mob_status == MOB_GO_FORWARD:
                         if all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]] is None:
+                            all_obj[i][j].energy -= 1
+                            all_obj[i][j].next_counter()
                             all_obj[i][j].rect = pygame.rect.Rect(all_obj[i][j].look[0]*SIZE_CELL, all_obj[i][j].look[1]*SIZE_CELL, SIZE_OBJ, SIZE_OBJ)
                             all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]] = all_obj[i][j]
+                            all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]].update()
                             all_obj[i][j] = None
 
                     if all_obj[i][j] is not None:
                         all_obj[i][j].next_counter()
+                        if mob_status != MOB_LOOK:
+                            all_obj[i][j].energy -= 1
 
+                            if all_obj[i][j].energy <= 0:
+                                all_obj[i][j] = None
 
-                    # if type(all_obj[i][j].sees) is Food:
-                    #     # all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]] # точно food.
-                    #     # all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]] = all_obj[i][j].sees
-                    #     pass
                 if all_obj[i][j] is not None:
                     all_obj[i][j].update()
 
-    clock.tick(30)
     pygame.display.flip()
+    clock.tick(current_ticks)
+
