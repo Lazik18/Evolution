@@ -149,6 +149,9 @@ while True:
             pygame.quit()
             sys.exit()
 
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            print('click (x: %s y: %s)' % (event.pos[0]//SIZE_CELL, event.pos[1]//SIZE_CELL))
+
         # if event.type == pygame.KEYDOWN:
         #     if event.key == pygame.K_LEFT:
         #         rect.move_ip(-40, 0)
@@ -164,11 +167,12 @@ while True:
         for j in range(0, map_img.get_height()):
             if all_obj[i][j]:
                 if type(all_obj[i][j]) is Mob:
-                    # if type(all_obj[i][j].sees) is Food:
-                    #     print(all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]])
-                        # all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]] = all_obj[i][j].sees
-
                     all_obj[i][j].sees = all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]]
+
+                    if type(all_obj[i][j].sees) is Food:
+                        # all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]] # точно food.
+                        # all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]] = all_obj[i][j].sees
+                        pass
 
                 all_obj[i][j].update()
 
