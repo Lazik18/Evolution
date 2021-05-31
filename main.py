@@ -26,13 +26,13 @@ for i in range(1, 6):
 all_gen *= SIZE_POPULATION
 random.shuffle(all_gen)
 
-
 MOB_TURN_LEFT = 0
 MOB_TURN_RIGHT = 1
 MOB_LOOK = 2
 MOB_TRANSFORM = 3
 MOB_EAT = 4
 MOB_GO_FORWARD = 5
+
 
 # 0 поворот налево на 45 +
 # 1 поворот направо на 45 +
@@ -44,7 +44,7 @@ MOB_GO_FORWARD = 5
 # 6-63 переход на такое кол-во клеток по таблице
 
 class Mob:
-    def __init__(self, x, y, gen, id, colour = (42, 141, 156)):
+    def __init__(self, x, y, gen, id, colour=(42, 141, 156), energy: int = 20):
         self.rect = pygame.Rect(x + 1, y + 1, SIZE_OBJ, SIZE_OBJ)
         self.id = id
         self.orientation = random.randint(0, 7)
@@ -53,12 +53,13 @@ class Mob:
         self.look = self.get_look()
         self.sees = None
         self.direction(0)
-        self.energy = 20
+        self.energy = energy
         self.colour = colour
         self.hungry = 1
 
     def __str__(self):
-        return "> id: %s\n> look: %s\tsees: %s\n> energy: %s\n> command: %s\ngen: %s" % (self.id, self.look, self.sees, self.energy, self.gen[self.counter], self.gen)
+        return "> id: %s\n> look: %s\tsees: %s\n> energy: %s\n> command: %s\ngen: %s\ngenotype: %s\n" % (
+            self.id, self.look, self.sees, self.energy, self.gen[self.counter], self.gen, sum(self.gen))
 
     def next_counter(self):
         temp_count = self.counter
@@ -69,9 +70,9 @@ class Mob:
 
             else:
                 can_see = [Food, Mob, Wall, Poison]
-                for o in range(1, len(can_see)):
+                for o in range(0, len(can_see)):
                     if type(self.sees) is can_see[o]:
-                        temp_count += (o+1)
+                        temp_count += (o + 2)
                         break
                 else:
                     temp_count += 1
@@ -82,11 +83,11 @@ class Mob:
         self.counter = temp_count % len(self.gen)
 
     def update(self):
-        pygame.draw.rect(screen, self.colour, self.rect, self.hungry*2)
+        pygame.draw.rect(screen, self.colour, self.rect, self.hungry * 2)
         self.look = self.get_look()
 
     def get_look(self):
-        x, y = self.rect.x//SIZE_CELL, self.rect.y//SIZE_CELL
+        x, y = self.rect.x // SIZE_CELL, self.rect.y // SIZE_CELL
 
         if self.orientation == 0:
             return [x, y + 1]
@@ -111,7 +112,6 @@ class Mob:
 
     def direction(self, arg: int):
         self.orientation = (self.orientation + arg) % 8
-
 
 
 class Wall:
@@ -144,7 +144,6 @@ class Poison:
 screen = pygame.display.set_mode((700, 625))
 all_obj = []
 
-
 for i in range(0, map_img.get_width()):
     s = []
     for j in range(0, map_img.get_height()):
@@ -158,7 +157,8 @@ for i in range(0, map_img.get_width()):
             else:
                 obj = Food(i * SIZE_CELL, j * SIZE_CELL)
         elif map_img.get_at([i, j]) == pygame.color.Color(0, 0, 255):
-            obj = Mob(i * SIZE_CELL, j * SIZE_CELL, all_gen[0], i*j+i+j, (sum(all_gen[0])%140, sum(all_gen[0])%210, sum(all_gen[0])%55))
+            obj = Mob(i * SIZE_CELL, j * SIZE_CELL, all_gen[0], i * j + i + j,
+                      (sum(all_gen[0]) % 140, sum(all_gen[0]) % 210, sum(all_gen[0]) % 55), 2500)
             all_gen.pop(0)
         s.append(obj)
     all_obj.append(s)
@@ -177,7 +177,7 @@ while True:
                 obj = all_obj[event.pos[0] // SIZE_CELL][event.pos[1] // SIZE_CELL]
 
                 if event.button == 1:
-                    print('click (x: %s y: %s)' % (event.pos[0]//SIZE_CELL, event.pos[1]//SIZE_CELL))
+                    print('click (x: %s y: %s)' % (event.pos[0] // SIZE_CELL, event.pos[1] // SIZE_CELL))
                     print(obj)
 
                 elif event.button == 3:
@@ -190,7 +190,6 @@ while True:
             current_ticks += (event.y * 10)
             if current_ticks < 1:
                 current_ticks = 1
-
 
         # if event.type == pygame.KEYDOWN:
         #     if event.key == pygame.K_LEFT:
@@ -208,7 +207,7 @@ while True:
             if all_obj[i][j]:
                 if type(all_obj[i][j]) is Mob:
 
-                    #Альтернативный метод работы с мобами
+                    # Альтернативный метод работы с мобами
                     mob_sees = all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]]
                     mob_status = all_obj[i][j].gen[all_obj[i][j].counter]
 
@@ -220,7 +219,8 @@ while True:
 
                     if mob_status == MOB_TRANSFORM:
                         if type(mob_sees) == Poison:
-                            all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]] = Food(mob_sees.rect.x, mob_sees.rect.y)
+                            all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]] = Food(mob_sees.rect.x,
+                                                                                         mob_sees.rect.y)
 
                     elif mob_status == MOB_EAT:
                         if type(mob_sees) == Food:
@@ -237,7 +237,8 @@ while True:
                         if all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]] is None:
                             all_obj[i][j].energy -= 1
                             all_obj[i][j].next_counter()
-                            all_obj[i][j].rect = pygame.rect.Rect(all_obj[i][j].look[0]*SIZE_CELL, all_obj[i][j].look[1]*SIZE_CELL, SIZE_OBJ, SIZE_OBJ)
+                            all_obj[i][j].rect = pygame.rect.Rect(all_obj[i][j].look[0] * SIZE_CELL,
+                                                                  all_obj[i][j].look[1] * SIZE_CELL, SIZE_OBJ, SIZE_OBJ)
                             all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]] = all_obj[i][j]
                             all_obj[all_obj[i][j].look[0]][all_obj[i][j].look[1]].update()
                             all_obj[i][j] = None
@@ -255,4 +256,3 @@ while True:
 
     pygame.display.flip()
     clock.tick(current_ticks)
-
