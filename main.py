@@ -4,6 +4,7 @@ import os
 import pygame
 import time
 import copy
+import csv
 
 pygame.init()
 random.seed()
@@ -38,7 +39,7 @@ MOB_EAT = 4
 MOB_GO_FORWARD = 5
 
 FOOD_ENERGY_BOOST = 5
-MOB_ENERGY = 100
+MOB_ENERGY = 50
 
 COMMAND_AMOUNT = 24
 
@@ -158,6 +159,7 @@ class Mob:
                     map_remove(self)
 
     def move(self):
+        self.eat()
         map_move(self)
 
     def transform_poison(self):
@@ -252,7 +254,11 @@ evo_years = 1
 
 all_obj = draw_map()
 
-while True:
+f = open('data.csv', 'w', encoding='UTF8', newline='')
+print(f)
+writer = csv.writer(f)
+
+while evo_life != 1000:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -279,14 +285,6 @@ while True:
     evo_life += 1
 
     mob_survived = []
-    for i in range(0, map_img.get_width()):
-        for j in range(0, map_img.get_height()):
-            if all_obj[i][j] is None:
-                if random.randint(1, 2500) == 1:
-                    if random.randint(1, 10) == 1:
-                        all_obj[i][j] = Poison(i, j)
-                    else:
-                        all_obj[i][j] = Food(i, j)
 
     for i in range(0, map_img.get_width()):
         for j in range(0, map_img.get_height()):
@@ -298,6 +296,13 @@ while True:
                     if all_obj[i][j].life <= evo_life:
                         all_obj[i][j].life += 1
                         all_obj[i][j].update()
+            else:
+                if random.randint(1, 2000) == 1:
+                    if random.randint(1, 10) == 1:
+                        all_obj[i][j] = Poison(i, j)
+                    else:
+                        all_obj[i][j] = Food(i, j)
+
 
     for i in range(0, map_img.get_width()):
         for j in range(0, map_img.get_height()):
@@ -327,16 +332,20 @@ while True:
                 all_gen.append(copy.deepcopy(all_gen[i]))
 
         for i in range(5):
-            r1 = random.randint(0, COMMAND_AMOUNT)
-            r2 = random.randint(1, COMMAND_AMOUNT + 1)
-            # print('all_gen', all_gen[i], len(all_gen), len(all_gen[i]))
-            all_gen[i][r1] = r2 - 1
+            for j in range(3):
+                r1 = random.randint(0, COMMAND_AMOUNT)
+                r2 = random.randint(1, COMMAND_AMOUNT + 1)
+                # print('all_gen', all_gen[i], len(all_gen), len(all_gen[i]))
+                all_gen[i][r1] = r2 - 1
 
         random.shuffle(all_gen)
-        print(evo_years, mob_s_text, evo_life)
+        # print(evo_years, mob_s_text, evo_life)
+        writer.writerow([evo_life])
         evo_life = 0
 
         all_obj = draw_map()
 
     pygame.display.flip()
     clock.tick(current_ticks)
+
+f.close()
