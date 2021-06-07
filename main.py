@@ -15,7 +15,7 @@ map_img = pygame.image.load(os.path.join(img_folder, 'map.png'))
 
 SIZE_CELL = 12
 SIZE_OBJ = 10
-SIZE_POPULATION = 5
+SIZE_POPULATION = 10
 
 all_gen = []
 for i in range(1, 6):
@@ -37,8 +37,8 @@ MOB_TRANSFORM = 3
 MOB_EAT = 4
 MOB_GO_FORWARD = 5
 
-FOOD_ENERGY_BOOST = 10
-MOB_ENERGY = 20
+FOOD_ENERGY_BOOST = 5
+MOB_ENERGY = 100
 
 COMMAND_AMOUNT = 24
 
@@ -141,15 +141,20 @@ class Mob:
 
     def can_be_eaten(self, by_obj):
         return False
+        # if self.energy < by_obj.energy:
+        #     return by_obj.energy - self.energy
+        # else:
+        #     return 0
 
     def eat(self):
         if self.sees is not None:
             if self.sees.can_be_eaten(self):
+
                 if type(self.sees) is Food:
                     self.energy += FOOD_ENERGY_BOOST
-                    # исправить
                     map_remove(self.sees)
                 elif type(self.sees) is Poison:
+                    self.energy += FOOD_ENERGY_BOOST
                     map_remove(self)
 
     def move(self):
@@ -190,7 +195,7 @@ class Wall:
         self.colour = (31, 52, 56)
 
     def can_be_eaten(self, by_obj):
-        return False
+        return 0
 
 
 class Food:
@@ -200,7 +205,7 @@ class Food:
         self.colour = (230, 103, 97)
 
     def can_be_eaten(self, by_obj):
-        return True
+        return FOOD_ENERGY_BOOST
 
 
 class Poison:
@@ -210,10 +215,10 @@ class Poison:
         self.colour = (118, 255, 122)
 
     def can_be_eaten(self, by_obj):
-        return True
+        return -100
 
 
-screen = pygame.display.set_mode((700, 625))
+screen = pygame.display.set_mode((1500, 750))
 
 
 def draw_map():
@@ -224,15 +229,15 @@ def draw_map():
             _obj = None
             if map_img.get_at([i, j]) == pygame.color.Color(0, 0, 0):
                 _obj = Wall(i, j)
-            elif map_img.get_at([j, i]) == pygame.color.Color(255, 0, 0):
-                r = random.randint(1, 3)
+            elif map_img.get_at([i, j]) == pygame.color.Color(255, 0, 0):
+                r = random.randint(1, 10)
                 if r == 1:
                     _obj = Poison(i, j)
                 else:
                     _obj = Food(i, j)
             elif map_img.get_at([i, j]) == pygame.color.Color(0, 0, 255):
                 _obj = Mob(i, j, all_gen[0], i * j + i + j,
-                           (sum(all_gen[0]) % 140, sum(all_gen[0]) % 210, sum(all_gen[0]) % 55), MOB_ENERGY)
+                           (sum(all_gen[0]) % 140, sum(all_gen[0]) % 55, sum(all_gen[0]) % 255), MOB_ENERGY)
                 all_gen.pop(0)
             s.append(_obj)
         obj_map.append(s)
@@ -274,6 +279,14 @@ while True:
     evo_life += 1
 
     mob_survived = []
+    for i in range(0, map_img.get_width()):
+        for j in range(0, map_img.get_height()):
+            if all_obj[i][j] is None:
+                if random.randint(1, 2500) == 1:
+                    if random.randint(1, 10) == 1:
+                        all_obj[i][j] = Poison(i, j)
+                    else:
+                        all_obj[i][j] = Food(i, j)
 
     for i in range(0, map_img.get_width()):
         for j in range(0, map_img.get_height()):
@@ -294,26 +307,35 @@ while True:
                                                                            SIZE_OBJ, SIZE_OBJ))
 
     if len(mob_survived) <= 5:
-        print(evo_years, evo_life)
+        all_gen = []
         evo_years += 1
-        evo_life = 0
+
+        mob_s_text = " | "
         if len(mob_survived) > 0:
             for i in range(5):
                 all_gen.append(mob_survived[i % len(mob_survived)].gen)
+                mob_s_text += "%s (%s)   " % (
+                mob_survived[i % len(mob_survived)].energy, sum((mob_survived[i % len(mob_survived)].gen)))
 
             last_gens = copy.deepcopy(all_gen)
 
         else:
             all_gen = copy.deepcopy(last_gens)
 
-        all_gen += copy.deepcopy(all_gen) * 4
+        for i in range(5):
+            for j in range(SIZE_POPULATION - 1):
+                all_gen.append(copy.deepcopy(all_gen[i]))
 
         for i in range(5):
             r1 = random.randint(0, COMMAND_AMOUNT)
             r2 = random.randint(1, COMMAND_AMOUNT + 1)
+            # print('all_gen', all_gen[i], len(all_gen), len(all_gen[i]))
             all_gen[i][r1] = r2 - 1
 
         random.shuffle(all_gen)
+        print(evo_years, mob_s_text, evo_life)
+        evo_life = 0
+
         all_obj = draw_map()
 
     pygame.display.flip()
