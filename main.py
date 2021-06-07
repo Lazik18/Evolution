@@ -38,7 +38,7 @@ MOB_TRANSFORM = 3
 MOB_EAT = 4
 MOB_GO_FORWARD = 5
 
-FOOD_ENERGY_BOOST = 5
+FOOD_ENERGY_BOOST = 10
 MOB_ENERGY = 50
 
 COMMAND_AMOUNT = 24
@@ -232,7 +232,7 @@ def draw_map():
             if map_img.get_at([i, j]) == pygame.color.Color(0, 0, 0):
                 _obj = Wall(i, j)
             elif map_img.get_at([i, j]) == pygame.color.Color(255, 0, 0):
-                r = random.randint(1, 10)
+                r = random.randint(1, 2)
                 if r == 1:
                     _obj = Poison(i, j)
                 else:
@@ -253,10 +253,6 @@ evo_life = 0
 evo_years = 1
 
 all_obj = draw_map()
-
-f = open('data.csv', 'w', encoding='UTF8', newline='')
-print(f)
-writer = csv.writer(f)
 
 while evo_life != 1000:
     for event in pygame.event.get():
@@ -279,6 +275,9 @@ while evo_life != 1000:
             current_ticks += (event.y * 10)
             if current_ticks < 1:
                 current_ticks = 1
+
+    f = open('data.csv', 'a', encoding='UTF8', newline='')
+    writer = csv.writer(f)
 
     screen.fill(pygame.color.Color(80, 80, 80))
 
@@ -341,11 +340,11 @@ while evo_life != 1000:
         random.shuffle(all_gen)
         # print(evo_years, mob_s_text, evo_life)
         writer.writerow([evo_life])
+        f.flush()
         evo_life = 0
 
         all_obj = draw_map()
 
+    f.close()
     pygame.display.flip()
     clock.tick(current_ticks)
-
-f.close()
