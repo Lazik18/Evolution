@@ -53,7 +53,6 @@ COMMAND_AMOUNT = 24
 # 6-63 переход на такое кол-во клеток по таблице
 
 
-
 def map_move(the_obj):
     map_remove(the_obj)
     the_obj.coordinates = the_obj.get_look()
@@ -88,10 +87,10 @@ class Mob:
             self.id, self.look, self.sees, self.energy, self.gen[self.counter], self.gen, sum(self.gen), self.life,
             self.coordinates)
 
-    def next_counter(self):
+    def next_counter(self, rec=0):
         temp_count = self.counter
 
-        if self.gen[self.counter] < 6:
+        if self.gen[self.counter] < 6 or rec >= 10:
             if self.gen[self.counter] != MOB_LOOK:
                 temp_count += 1
 
@@ -103,13 +102,15 @@ class Mob:
                         break
                 else:
                     temp_count += 1
+            self.counter = temp_count % len(self.gen)
+            self.energy -= 1
 
         else:
             temp_count += self.gen[self.counter]
+            self.counter = temp_count % len(self.gen)
+            self.update(rec + 1)
 
-        self.counter = temp_count % len(self.gen)
-
-    def update(self):
+    def update(self, rec=0):
         status = self.gen[self.counter]
         if status == MOB_GO_FORWARD:
             # Проверяем, если впереди клетка пустая
@@ -132,9 +133,8 @@ class Mob:
         elif status == MOB_TURN_LEFT:
             self.direction(-1)
 
-        self.next_counter()
+        self.next_counter(rec)
         self.look = self.get_look()
-        self.energy -= 1
 
         if self.energy <= 0:
             map_remove(self)
@@ -225,7 +225,7 @@ def draw_map():
             if map_img.get_at([i, j]) == pygame.color.Color(0, 0, 0):
                 _obj = Wall(i, j)
             elif map_img.get_at([j, i]) == pygame.color.Color(255, 0, 0):
-                r = random.randint(1, 10)
+                r = random.randint(1, 3)
                 if r == 1:
                     _obj = Poison(i, j)
                 else:
@@ -243,6 +243,7 @@ def draw_map():
 clock = pygame.time.Clock()
 current_ticks = 10
 evo_life = 0
+evo_years = 1
 
 all_obj = draw_map()
 
@@ -293,7 +294,8 @@ while True:
                                                                            SIZE_OBJ, SIZE_OBJ))
 
     if len(mob_survived) <= 5:
-        print(evo_life)
+        print(evo_years, evo_life)
+        evo_years += 1
         evo_life = 0
         if len(mob_survived) > 0:
             for i in range(5):
@@ -308,8 +310,8 @@ while True:
 
         for i in range(5):
             r1 = random.randint(0, COMMAND_AMOUNT)
-            r2 = random.randint(1, COMMAND_AMOUNT+1)
-            all_gen[i][r1] = r2-1
+            r2 = random.randint(1, COMMAND_AMOUNT + 1)
+            all_gen[i][r1] = r2 - 1
 
         random.shuffle(all_gen)
         all_obj = draw_map()
