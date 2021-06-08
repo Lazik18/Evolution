@@ -30,17 +30,15 @@ last_gens = copy.deepcopy(all_gen)  # список с выживщими моб�
 all_gen *= SIZE_POPULATION  # умножаем, чтоб сделать 50 генов
 random.shuffle(all_gen)  # мешаем их, чтоб потом раздать в случайном порядке
 
-MOB_TURN_LEFT = 0  # тут мы для удобства сделали команды константами
-MOB_TURN_RIGHT = 1
-MOB_LOOK = 2
-MOB_TRANSFORM = 3
-MOB_EAT = 4
-MOB_GO_FORWARD = 5
+# тут мы для удобства сделали команды константами
+MOB_TURN_LEFT, MOB_TURN_RIGHT, MOB_LOOK, MOB_TRANSFORM, MOB_EAT, MOB_GO = 0, 1, 2, 3, 4, 5
 
-FOOD_ENERGY_BOOST = 10  # столько дается энергии за съеденную еду
-MOB_ENERGY = 100  # начальное кол-во энергии
+# столько дается энергии за съеденную еду
+FOOD_ENERGY_BOOST, MOB_ENERGY = 10, 100
 
-COMMAND_AMOUNT = 24  # кол-во команд всего (изначально их было 64)
+# кол-во команд всего (изначально их было 64)
+
+COMMAND_AMOUNT, MOB_FREE_COMMAND = 35, 13
 
 
 # 0 поворот налево на 45 +
@@ -48,16 +46,17 @@ COMMAND_AMOUNT = 24  # кол-во команд всего (изначально
 # 2 посмотреть (1 - пусто; 2 - еда; 3 - моб; 4 - стена; 5 - яд)+
 # 3 преобразовать яд в еду +
 # 4 съесть
-# 5 перейти вперед
+# 5 - 12 переход по направлению *!ПОЗИЦИЯ ЗРЕНИЯ НЕ МЕНЯЕТСЯ
 
-# 6-63 переход на такое кол-во клеток по таблице
+# 13-63 переход на такое кол-во клеток по таблице
 
 
-def map_move(the_obj):  # тут происходит отрисовка и передвежение мобов на карте
-    map_remove(the_obj)
-    the_obj.coordinates = the_obj.get_look()
-    all_obj[the_obj.look[0]][the_obj.look[1]] = the_obj
-    the_obj.look = the_obj.get_look()
+def map_move(the_obj, where):  # тут происходит отрисовка и передвежение мобов на карте
+    if all_obj[where[0]][where[1]] is None:
+        map_remove(the_obj)
+        the_obj.coordinates = where
+        all_obj[where[0]][where[1]] = the_obj
+        the_obj.look = the_obj.get_look()
 
 
 def map_remove(the_obj):  # удаляем объекты с карты
@@ -90,7 +89,7 @@ class Mob:
     def next_counter(self, rec=0):  # тут происходит управление счетчиком
         temp_count = self.counter
 
-        if self.gen[self.counter] < 6 or rec >= 10:  # если команда, онзачает какое-то действие
+        if self.gen[self.counter] < MOB_FREE_COMMAND or rec >= 10:  # если команда, онзачает какое-то действие
             if self.gen[self.counter] != MOB_LOOK:
                 temp_count += 1
 
@@ -105,17 +104,16 @@ class Mob:
             self.counter = temp_count % len(self.gen)
             self.energy -= 1
 
-        else:  # команды 6-24
+        else:  # команды 13-31
             temp_count += self.gen[self.counter]
             self.counter = temp_count % len(self.gen)
             self.update(rec + 1)
 
     def update(self, rec=0):  # метод, который вызывается у всех классов, для изменения их состояния
         status = self.gen[self.counter]
-        if status == MOB_GO_FORWARD:
-            # Проверяем, если впереди клетка пустая
-            if self.sees is None:
-                self.move()
+
+        if MOB_GO + 7 > status >= MOB_GO:
+            self.move(status - MOB_GO)
 
         elif status == MOB_LOOK:
             pass
@@ -157,32 +155,40 @@ class Mob:
                     self.energy += FOOD_ENERGY_BOOST
                     map_remove(self)
 
-    def move(self):  # передвижение, а так же если мы наступаем в еду или яд, мы ее кусаем
+    def move(self, where):  # передвижение, а так же если мы наступаем в еду или яд, мы ее кусаем
         self.eat()
-        map_move(self)
+        map_move(self, self.get_look(orientation=where))
 
     def transform_poison(self):  # вызов функии превращения яда в еду
         if type(self.sees) is Poison:
             map_transform(self.sees)
 
-    def get_look(self):  # эта функция позволяет нам определить куда смотрит клетка, когда крутится
-        x, y = self.coordinates[0], self.coordinates[1]
+    # эта функция позволяет нам определить куда смотрит клетка, когда крутится
+    def get_look(self, coordinates: list = None, orientation=None):
 
-        if self.orientation == 0:
+        if orientation is None:
+            orientation = self.orientation
+
+        if coordinates is None:
+            x, y = self.coordinates[0], self.coordinates[1]
+        else:
+            x, y = coordinates[0], coordinates[1]
+
+        if orientation == 0:
             return [x, y + 1]
-        elif self.orientation == 1:
+        elif orientation == 1:
             return [x + 1, y + 1]
-        elif self.orientation == 2:
+        elif orientation == 2:
             return [x + 1, y]
-        elif self.orientation == 3:
+        elif orientation == 3:
             return [x + 1, y - 1]
-        elif self.orientation == 4:
+        elif orientation == 4:
             return [x, y - 1]
-        elif self.orientation == 5:
+        elif orientation == 5:
             return [x - 1, y - 1]
-        elif self.orientation == 6:
+        elif orientation == 6:
             return [x - 1, y]
-        elif self.orientation == 7:
+        elif orientation == 7:
             return [x - 1, y + 1]
 
     def direction(self, arg: int):
@@ -229,7 +235,7 @@ def draw_map():  # функция отрисовки карты из карты.
         for j in range(0, map_img.get_height()):
             _obj = None
             if map_img.get_at([i, j]) == pygame.color.Color(0, 0, 0):  # определяя цвет на рисунке, мы раставляем мобов,
-                _obj = Wall(i, j)                                      # стены, яд и еду
+                _obj = Wall(i, j)  # стены, яд и еду
             elif map_img.get_at([i, j]) == pygame.color.Color(255, 0, 0):
                 r = random.randint(1, 2)
                 if r == 1:
@@ -253,7 +259,7 @@ evo_years = 1  # кол-во симуляций
 
 all_obj = draw_map()
 
-while evo_life != 1000:
+while evo_life < 100000:
     for event in pygame.event.get():  # закрытие окна
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -301,7 +307,6 @@ while evo_life != 1000:
                     else:
                         all_obj[i][j] = Food(i, j)
 
-
     for i in range(0, map_img.get_width()):
         for j in range(0, map_img.get_height()):
             if all_obj[i][j] is not None:
@@ -318,7 +323,7 @@ while evo_life != 1000:
             for i in range(5):
                 all_gen.append(mob_survived[i % len(mob_survived)].gen)
                 mob_s_text += "%s (%s)   " % (
-                mob_survived[i % len(mob_survived)].energy, sum((mob_survived[i % len(mob_survived)].gen)))
+                    mob_survived[i % len(mob_survived)].energy, sum((mob_survived[i % len(mob_survived)].gen)))
 
             last_gens = copy.deepcopy(all_gen)
 
