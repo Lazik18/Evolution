@@ -2,23 +2,22 @@ import random
 import sys
 import os
 import pygame
-import time
 import copy
 import csv
 
-pygame.init()
+pygame.init()  # инициализация библиотеки
 random.seed()
 
-game_folder = os.path.dirname(__file__)
-img_folder = os.path.join(game_folder, 'img')
+game_folder = os.path.dirname(__file__)  # Определение пути с игрой
+img_folder = os.path.join(game_folder, 'img')  # Определение пути к пнг файлам
 
-map_img = pygame.image.load(os.path.join(img_folder, 'map.png'))
+map_img = pygame.image.load(os.path.join(img_folder, 'map.png'))  # путь к карте
 
-SIZE_CELL = 12
-SIZE_OBJ = 10
-SIZE_POPULATION = 10
+SIZE_CELL = 12  # Размер клетки (для отрисовки)
+SIZE_OBJ = 10  # Размер объекта (для отрисовки)
+SIZE_POPULATION = 10  # Размер популяции на один ген
 
-all_gen = []
+all_gen = []  # здесь мы из файлов gen1-5 считываем гены в список, чтоб потом раздать их
 for i in range(1, 6):
     file = open('gen/gen' + str(i) + '.txt', 'r')
     s = []
@@ -27,21 +26,21 @@ for i in range(1, 6):
     all_gen.append(s)
     file.close()
 
-last_gens = copy.deepcopy(all_gen)
-all_gen *= SIZE_POPULATION
-random.shuffle(all_gen)
+last_gens = copy.deepcopy(all_gen)  # список с выживщими мобами
+all_gen *= SIZE_POPULATION  # умножаем, чтоб сделать 50 генов
+random.shuffle(all_gen)  # мешаем их, чтоб потом раздать в случайном порядке
 
-MOB_TURN_LEFT = 0
+MOB_TURN_LEFT = 0  # тут мы для удобства сделали команды константами
 MOB_TURN_RIGHT = 1
 MOB_LOOK = 2
 MOB_TRANSFORM = 3
 MOB_EAT = 4
 MOB_GO_FORWARD = 5
 
-FOOD_ENERGY_BOOST = 10
-MOB_ENERGY = 50
+FOOD_ENERGY_BOOST = 10  # столько дается энергии за съеденную еду
+MOB_ENERGY = 100  # начальное кол-во энергии
 
-COMMAND_AMOUNT = 24
+COMMAND_AMOUNT = 24  # кол-во команд всего (изначально их было 64)
 
 
 # 0 поворот налево на 45 +
@@ -54,18 +53,18 @@ COMMAND_AMOUNT = 24
 # 6-63 переход на такое кол-во клеток по таблице
 
 
-def map_move(the_obj):
+def map_move(the_obj):  # тут происходит отрисовка и передвежение мобов на карте
     map_remove(the_obj)
     the_obj.coordinates = the_obj.get_look()
     all_obj[the_obj.look[0]][the_obj.look[1]] = the_obj
     the_obj.look = the_obj.get_look()
 
 
-def map_remove(the_obj):
+def map_remove(the_obj):  # удаляем объекты с карты
     all_obj[the_obj.coordinates[0]][the_obj.coordinates[1]] = None
 
 
-def map_transform(the_obj):
+def map_transform(the_obj):  # изменение яда на еду (вызывают мобы)
     all_obj[the_obj.coordinates[0]][the_obj.coordinates[1]] = Food(the_obj.coordinates[0], the_obj.coordinates[1])
 
 
@@ -73,25 +72,25 @@ class Mob:
     def __init__(self, x, y, gen, id, colour=(42, 141, 156), energy: int = 20, life: int = 0):
         self.coordinates = [x, y]
         self.id = id
-        self.orientation = random.randint(0, 7)
-        self.gen = gen
-        self.counter = 0
-        self.look = self.get_look()
+        self.orientation = random.randint(0, 7)  # изначально задается случайное направление куда он смотрит
+        self.gen = gen  # генотип моба
+        self.counter = 0  # счетчик, указывающий на текущую команду
+        self.look = self.get_look()  # объект на который он смотрит
         self.sees = None
         self.direction(0)
         self.energy = energy
         self.colour = colour
-        self.life = life
+        self.life = life  # кол-во прожитых раундов
 
-    def __str__(self):
+    def __str__(self):  # позволяет вывести инфу о мобе, если тык в него на карте
         return "> id: %s\n> look: %s\tsees: %s\n> energy: %s\n> command: %s\ngen: %s\ngenotype: %s\n life: %s\n coor: %s" % (
             self.id, self.look, self.sees, self.energy, self.gen[self.counter], self.gen, sum(self.gen), self.life,
             self.coordinates)
 
-    def next_counter(self, rec=0):
+    def next_counter(self, rec=0):  # тут происходит управление счетчиком
         temp_count = self.counter
 
-        if self.gen[self.counter] < 6 or rec >= 10:
+        if self.gen[self.counter] < 6 or rec >= 10:  # если команда, онзачает какое-то действие
             if self.gen[self.counter] != MOB_LOOK:
                 temp_count += 1
 
@@ -106,12 +105,12 @@ class Mob:
             self.counter = temp_count % len(self.gen)
             self.energy -= 1
 
-        else:
+        else:  # команды 6-24
             temp_count += self.gen[self.counter]
             self.counter = temp_count % len(self.gen)
             self.update(rec + 1)
 
-    def update(self, rec=0):
+    def update(self, rec=0):  # метод, который вызывается у всех классов, для изменения их состояния
         status = self.gen[self.counter]
         if status == MOB_GO_FORWARD:
             # Проверяем, если впереди клетка пустая
@@ -147,7 +146,7 @@ class Mob:
         # else:
         #     return 0
 
-    def eat(self):
+    def eat(self):  # КУСЬ (если можем)
         if self.sees is not None:
             if self.sees.can_be_eaten(self):
 
@@ -158,15 +157,15 @@ class Mob:
                     self.energy += FOOD_ENERGY_BOOST
                     map_remove(self)
 
-    def move(self):
+    def move(self):  # передвижение, а так же если мы наступаем в еду или яд, мы ее кусаем
         self.eat()
         map_move(self)
 
-    def transform_poison(self):
+    def transform_poison(self):  # вызов функии превращения яда в еду
         if type(self.sees) is Poison:
             map_transform(self.sees)
 
-    def get_look(self):
+    def get_look(self):  # эта функция позволяет нам определить куда смотрит клетка, когда крутится
         x, y = self.coordinates[0], self.coordinates[1]
 
         if self.orientation == 0:
@@ -206,7 +205,7 @@ class Food:
         self.id = 3
         self.colour = (230, 103, 97)
 
-    def can_be_eaten(self, by_obj):
+    def can_be_eaten(self, by_obj):  # функиция позволяющяя узнать, можно ли кусь этот объект
         return FOOD_ENERGY_BOOST
 
 
@@ -220,17 +219,17 @@ class Poison:
         return -100
 
 
-screen = pygame.display.set_mode((1500, 750))
+screen = pygame.display.set_mode((1500, 750))  # наше окно с симуляцией
 
 
-def draw_map():
+def draw_map():  # функция отрисовки карты из карты.пнг (лежит в папке img)
     obj_map = []
     for i in range(0, map_img.get_width()):
         s = []
         for j in range(0, map_img.get_height()):
             _obj = None
-            if map_img.get_at([i, j]) == pygame.color.Color(0, 0, 0):
-                _obj = Wall(i, j)
+            if map_img.get_at([i, j]) == pygame.color.Color(0, 0, 0):  # определяя цвет на рисунке, мы раставляем мобов,
+                _obj = Wall(i, j)                                      # стены, яд и еду
             elif map_img.get_at([i, j]) == pygame.color.Color(255, 0, 0):
                 r = random.randint(1, 2)
                 if r == 1:
@@ -240,7 +239,7 @@ def draw_map():
             elif map_img.get_at([i, j]) == pygame.color.Color(0, 0, 255):
                 _obj = Mob(i, j, all_gen[0], i * j + i + j,
                            (sum(all_gen[0]) % 140, sum(all_gen[0]) % 55, sum(all_gen[0]) % 255), MOB_ENERGY)
-                all_gen.pop(0)
+                all_gen.pop(0)  # удаляем из пула генов, ген, который использовали
             s.append(_obj)
         obj_map.append(s)
 
@@ -248,19 +247,19 @@ def draw_map():
 
 
 clock = pygame.time.Clock()
-current_ticks = 10
-evo_life = 0
-evo_years = 1
+current_ticks = 10  # условно, скорость отрисовки
+evo_life = 0  # кол-во раундов в одной симуляции
+evo_years = 1  # кол-во симуляций
 
 all_obj = draw_map()
 
 while evo_life != 1000:
-    for event in pygame.event.get():
+    for event in pygame.event.get():  # закрытие окна
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
 
-        if event.type == pygame.MOUSEBUTTONDOWN:
+        if event.type == pygame.MOUSEBUTTONDOWN:  # клик по мобу, чтоб вызвать сведения о нем
             try:
                 obj = all_obj[event.pos[0] // SIZE_CELL][event.pos[1] // SIZE_CELL]
 
@@ -271,12 +270,12 @@ while evo_life != 1000:
             except IndexError:
                 pass
 
-        elif event.type == pygame.MOUSEWHEEL:
+        elif event.type == pygame.MOUSEWHEEL:  # круть колесико, чтоб изменить скорость
             current_ticks += (event.y * 10)
             if current_ticks < 1:
                 current_ticks = 1
 
-    f = open('data.csv', 'a', encoding='UTF8', newline='')
+    f = open('data.csv', 'a', encoding='UTF8', newline='')  # собираем инфу для графиков
     writer = csv.writer(f)
 
     screen.fill(pygame.color.Color(80, 80, 80))
@@ -285,7 +284,7 @@ while evo_life != 1000:
 
     mob_survived = []
 
-    for i in range(0, map_img.get_width()):
+    for i in range(0, map_img.get_width()):  # поклеточная отрисовка и логика
         for j in range(0, map_img.get_height()):
             if all_obj[i][j] is not None:
                 if type(all_obj[i][j]) is Mob:
@@ -310,7 +309,7 @@ while evo_life != 1000:
                                                                            all_obj[i][j].coordinates[1] * SIZE_CELL + 1,
                                                                            SIZE_OBJ, SIZE_OBJ))
 
-    if len(mob_survived) <= 5:
+    if len(mob_survived) <= 5:  # работа с выжившими генами
         all_gen = []
         evo_years += 1
 
@@ -330,14 +329,14 @@ while evo_life != 1000:
             for j in range(SIZE_POPULATION - 1):
                 all_gen.append(copy.deepcopy(all_gen[i]))
 
-        for i in range(5):
+        for i in range(5):  # тут происходит мутация трех случ. команд, у каждого пяти мобов с разными генами
             for j in range(3):
                 r1 = random.randint(0, COMMAND_AMOUNT)
                 r2 = random.randint(1, COMMAND_AMOUNT + 1)
                 # print('all_gen', all_gen[i], len(all_gen), len(all_gen[i]))
                 all_gen[i][r1] = r2 - 1
 
-        random.shuffle(all_gen)
+        random.shuffle(all_gen)  # опять мешаем гены, чтоб потом раздать
         # print(evo_years, mob_s_text, evo_life)
         writer.writerow([evo_life])
         f.flush()
